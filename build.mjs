@@ -34,7 +34,7 @@ const hashOf = (files) => {
   files.forEach((f) => { if (fs.existsSync(f)) h.update(fs.readFileSync(f)); });
   return h.digest('hex').slice(0, 8);
 };
-const jsFiles = ['main.js', ...fs.readdirSync(path.join(ROOT, 'assets/js/modules')).map((f) => 'modules/' + f)];
+const jsFiles = ['smoothscroll.js', 'main.js', ...fs.readdirSync(path.join(ROOT, 'assets/js/modules')).map((f) => 'modules/' + f)];
 const VERSION = hashOf([path.join(ROOT, 'assets/css/main.min.css'), ...jsFiles.map((f) => path.join(ROOT, 'assets/js', f))]);
 
 // ---------- preloader CSS, inlined in <head> so the preloader looks right before main.min.css arrives ----------
