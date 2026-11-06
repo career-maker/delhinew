@@ -98,3 +98,7 @@ body.header-hidden .menu-nav{top:0;}
 .halal-line{display:flex;align-items:center;gap:.75rem;}
 .halal-line img{width:56px;height:56px;border-radius:50%;flex:none;}
 .tk-dl{margin-top:var(--sp-2);}
+
+/* Download Our Food Menu: gold button with cream sweep (same as Deliveroo on home); beats .tk-card p a colour */
+.tk-card .tk-dl a.btn{background:var(--gold);color:var(--ink);--sweep:#FFF5E5;text-decoration:none;}
+.tk-card .tk-dl a.btn:hover,.tk-card .tk-dl a.btn:focus-visible{color:var(--brand-dark);}
