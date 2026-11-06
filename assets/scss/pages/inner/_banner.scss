@@ -4,7 +4,7 @@
 @use '../../abstracts/mixins' as *;
 
 .page-banner{position:relative;isolation:isolate;display:flex;align-items:flex-end;min-height:clamp(560px,82svh,820px);color:#fff;background:#1a120e;overflow:hidden;}
-.page-banner-img{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;filter:brightness(.74);animation:heroZoom 9s ease-out both;}
+.page-banner-img{object-position:var(--bp,50% 50%);position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;filter:brightness(.74);animation:heroZoom 9s ease-out both;}
 .page-banner::after{content:"";position:absolute;top:0;left:0;right:0;height:clamp(140px,24vh,220px);z-index:-1;background:linear-gradient(to bottom,rgba(4,13,16,.78) 0%,rgba(4,13,16,.32) 55%,transparent 100%);pointer-events:none;}
 .page-banner-in{display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:calc(var(--topbar-h) + var(--nav-h) + var(--sp-4));padding-bottom:var(--sp-4);}
 .page-banner .script{margin-bottom:.55rem;line-height:1.25;text-shadow:0 2px 14px rgba(0,0,0,.45);}
@@ -37,4 +37,9 @@
 /* tablet: shorter banners so the photo is not stretched over a whole tall screen */
 @media (min-width: 600px) and (max-width: 1100px) {
   .page-banner{min-height:clamp(420px,56svh,600px);}
+}
+
+/* phones use their own focal point (front matter banner_pos_mobile) */
+@include bp-phone{
+  .page-banner-img{object-position:var(--bp-m,var(--bp,50% 50%));}
 }

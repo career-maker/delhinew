@@ -81,6 +81,25 @@ const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =
 const esc = (s) => String(s).replace(/&(?!(?:[a-z]+|#\d+);)/gi, '&amp;').replace(/"/g, '&quot;');
 const abs = (p) => (p ? (/^https?:/.test(p) ? p : SITE + p) : '');
 
+// real pixel size of a .webp (VP8, VP8L or VP8X); null if unreadable
+const webpSize = (url) => {
+  try {
+    const b = fs.readFileSync(path.join(ROOT, url.replace(/^\//, '')));
+    if (b.toString('ascii', 0, 4) !== 'RIFF' || b.toString('ascii', 8, 12) !== 'WEBP') return null;
+    const t = b.toString('ascii', 12, 16);
+    if (t === 'VP8X') return [1 + b.readUIntLE(24, 3), 1 + b.readUIntLE(27, 3)];
+    if (t === 'VP8L') { const v = b.readUInt32LE(21); return [1 + (v & 0x3fff), 1 + ((v >> 14) & 0x3fff)]; }
+    if (t === 'VP8 ') return [b.readUInt16LE(26) & 0x3fff, b.readUInt16LE(28) & 0x3fff];
+  } catch {}
+  return null;
+};
+// banner: tablet and desktop share `banner`; phones use `banner_mobile` (falls back to `banner`)
+const PHONE_MQ = '(max-width:575.98px)';
+const bannerPair = (meta) => {
+  const desktop = meta.banner;
+  const mobile = meta.banner_mobile || desktop;
+  return { desktop, mobile, split: mobile !== desktop };
+};
 const banner = (meta) => {
   if (!meta.banner || meta.banner === 'none') return '';
   const parents = (meta.parents || '').split(';').filter(Boolean).map((x) => x.split('|'));
@@ -88,10 +107,16 @@ const banner = (meta) => {
     .map(([label, href]) => `<li><a href="${href}">${label}</a></li>`)
     .join('');
   const here = meta.crumb || meta.h1 || meta.title;
-  const pos = meta.banner_pos ? ` style="object-position:${meta.banner_pos}"` : '';
+  const { desktop, mobile, split } = bannerPair(meta);
+  const [dw, dh] = webpSize(desktop) || [2000, 1333];
+  const [mw, mh] = webpSize(mobile) || [dw, dh];
+  const posD = meta.banner_pos, posM = meta.banner_pos_mobile || meta.banner_pos;
+  // object-position per viewport through custom properties (CSS picks the phone one)
+  const pos = (posD || posM) ? ` style="--bp:${posD || '50% 50%'};--bp-m:${posM || posD || '50% 50%'}"` : '';
+  const src = split || mobile ? `<source media="${PHONE_MQ}" srcset="${mobile}" width="${mw}" height="${mh}">` : '';
   const cls = meta.banner_class ? ` page-banner--${meta.banner_class}` : '';
   return `<section class="page-banner${cls}" aria-label="Page title">
-  <img class="page-banner-img" src="${meta.banner}" width="2000" height="1333" alt=""${pos} fetchpriority="high">
+  <picture>${split ? src : ''}<img class="page-banner-img" src="${desktop}" width="${dw}" height="${dh}" alt=""${pos} fetchpriority="high"></picture>
   <div class="wrap page-banner-in">
     ${meta.kicker ? `<p class="script">${meta.kicker}</p>` : ''}
     <h1>${meta.h1 || meta.title}</h1>
@@ -189,7 +214,7 @@ pages.forEach(({ meta, body: srcBody }) => {
   const pagePath = meta.path;
   const is404 = meta.file === '404.html';
   if (HIDE_INNER && meta.file !== 'index.html' && !is404) {
-    delete meta.redirect; delete meta.scripts; delete meta.banner; meta.schema = '';
+    delete meta.redirect; delete meta.scripts; delete meta.banner; delete meta.banner_mobile; meta.schema = '';
     meta.title = (meta.h1 || meta.title || 'Coming soon').replace(/\s*\|.*$/, '') + ' | Coming soon | The Delhi Brasserie';
     meta.body_class = 'page-inner page-soon';
     body = '{{> coming-soon}}';
@@ -218,7 +243,12 @@ pages.forEach(({ meta, body: srcBody }) => {
     og_type: meta.og_type || 'website',
     og_description: esc(meta.og_description || meta.description || ''),
     og_image_abs: abs(meta.og_image || '/assets/images/restaurant/storefront.webp'),
-    preload: meta.preload_image ? `<link rel="preload" as="image" href="${meta.preload_image}" fetchpriority="high">` : (meta.banner && meta.banner !== 'none' ? `<link rel="preload" as="image" href="${meta.banner}" fetchpriority="high">` : ''),
+    preload: meta.preload_image ? `<link rel="preload" as="image" href="${meta.preload_image}" fetchpriority="high">` : (meta.banner && meta.banner !== 'none' ? (() => {
+      const p = bannerPair(meta);
+      return p.split
+        ? `<link rel="preload" as="image" href="${p.mobile}" media="${PHONE_MQ}" fetchpriority="high">\n<link rel="preload" as="image" href="${p.desktop}" media="(min-width:576px)" fetchpriority="high">`
+        : `<link rel="preload" as="image" href="${p.desktop}" fetchpriority="high">`;
+    })() : ''),
     robots: BETA ? `<meta name="robots" content="${BETA_ROBOTS}">` : meta.robots ? `<meta name="robots" content="${meta.robots}">` : '',
     version: VERSION,
     preloader_css: PRELOADER_CSS,
